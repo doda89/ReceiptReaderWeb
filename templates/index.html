@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Reader & Recipe Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .drag-area {
+            border: 2px dashed #4a5568;
+            min-height: 200px;
+            transition: all 0.3s ease;
+        }
+        .drag-area.active {
+            border-color: #48bb78;
+            background-color: #f0fff4;
+        }
+        .loading {
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Receipt Reader & Recipe Generator</h1>
+            <p class="text-gray-600">Upload your receipt to extract text and get recipe suggestions</p>
+        </header>
+
+        <main class="max-w-3xl mx-auto">
+            <!-- Upload Section -->
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div id="drop-area" class="drag-area rounded-lg flex flex-col items-center justify-center p-8">
+                    <svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <p class="text-gray-600 text-center mb-4">Drag and drop your receipt image here<br>or click to select a file</p>
+                    <input type="file" id="file-input" class="hidden" accept=".jpg,.jpeg,.png">
+                    <button id="select-button" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        Select File
+                    </button>
+                </div>
+                <div id="file-info" class="mt-4 text-center hidden">
+                    <p class="text-gray-700">Selected file: <span id="file-name" class="font-semibold"></span></p>
+                </div>
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading text-center mb-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <p class="text-gray-600 mt-2">Processing your receipt...</p>
+            </div>
+
+            <!-- Results Section -->
+            <section id="results" class="hidden">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Receipt Details</h2>
+                    <div id="receipt-text" class="prose max-w-none"></div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Food Items</h2>
+                    <ul id="food-items" class="list-disc list-inside"></ul>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Recipe Suggestions</h2>
+                    <div id="recipe-suggestions" class="prose max-w-none"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropArea = document.getElementById('drop-area');
+            const fileInput = document.getElementById('file-input');
+            const selectButton = document.getElementById('select-button');
+            const fileInfo = document.getElementById('file-info');
+            const fileName = document.getElementById('file-name');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const receiptText = document.getElementById('receipt-text');
+            const foodItems = document.getElementById('food-items');
+            const recipeSuggestions = document.getElementById('recipe-suggestions');
+
+            // Handle file selection button
+            selectButton.addEventListener('click', () => fileInput.click());
+
+            // Handle file input change
+            fileInput.addEventListener('change', handleFile);
+
+            // Handle drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.add('active');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.remove('active');
+                });
+            });
+
+            dropArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                handleFile({ target: { files: [file] } });
+            });
+
+            function handleFile(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    fileName.textContent = file.name;
+                    fileInfo.classList.remove('hidden');
+                    processReceipt(file);
+                }
+            }
+
+            async function processReceipt(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    loading.classList.add('show');
+                    results.classList.add('hidden');
+
+                    const response = await fetch('/api/process-receipt', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        displayResults(data);
+                    } else {
+                        throw new Error(data.error || 'Failed to process receipt');
+                    }
+                } catch (error) {
+                    alert(error.message);
+                } finally {
+                    loading.classList.remove('show');
+                }
+            }
+
+            function displayResults(data) {
+                // Display refined text
+                receiptText.innerHTML = `<pre class="whitespace-pre-wrap">${data.refined_text || data.raw_text}</pre>`;
+
+                // Display food items
+                foodItems.innerHTML = data.food_items.map(item => `<li>${item}</li>`).join('');
+
+                // Display recipe suggestions
+                recipeSuggestions.innerHTML = `<div class="whitespace-pre-wrap">${data.recipe_suggestions || 'No recipe suggestions available.'}</div>`;
+
+                results.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html> 

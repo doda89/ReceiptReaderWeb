@@ -1,48 +1,28 @@
 # Receipt Reader & Recipe Generator
 
-A web application that processes receipt images using OCR, extracts text, and generates recipe suggestions using a local LLM.
+A web application that processes receipt images using Google Cloud Vision OCR and OpenAI to extract text, identify food items, and generate recipe suggestions.
 
 ## Features
 
 - Upload receipt images via drag-and-drop or file selection
-- Extract text from receipts using OCR
-- Process and format receipt text for better readability
+- Extract text from receipts using Google Cloud Vision OCR
+- Process and format receipt text using OpenAI
 - Identify food items from the receipt
 - Generate recipe suggestions based on identified ingredients
 - Modern, responsive web interface
 
 ## Prerequisites
 
-- Python 3.7 or higher
-- Tesseract OCR
-- Ollama (for local LLM)
-
-### Installing Tesseract OCR
-
-#### macOS
-```bash
-brew install tesseract
-```
-
-#### Ubuntu/Debian
-```bash
-sudo apt-get install tesseract-ocr
-```
-
-#### Windows
-1. Download the installer from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
-2. Install and add the installation directory to your system PATH
-
-### Installing Ollama
-
-Follow the instructions at [Ollama's website](https://ollama.ai) to install and set up Ollama on your system.
+- Python 3.9 or higher
+- Google Cloud Vision API credentials
+- OpenAI API key
 
 ## Local Development Setup
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd receipt-reader
+git clone https://github.com/doda89/ReceiptReaderWeb.git
+cd ReceiptReaderWeb
 ```
 
 2. Create a virtual environment and activate it:
@@ -56,38 +36,28 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Start the Flask development server:
+4. Set up credentials:
+
+   a. Get your OpenAI API key from https://platform.openai.com/api-keys
+   
+   b. Set up Google Cloud Vision:
+      - Create a project in Google Cloud Console
+      - Enable the Cloud Vision API
+      - Create a service account and download the JSON key file
+      - Save the key file as `google-credentials.json` in your project root
+
+5. Create a `.env` file in the project root:
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+6. Start the Flask development server:
 ```bash
 python app.py
 ```
 
-5. Visit `http://localhost:5000` in your browser
-
-## Deployment to Vercel
-
-1. Install the Vercel CLI:
-```bash
-npm install -g vercel
-```
-
-2. Login to Vercel:
-```bash
-vercel login
-```
-
-3. Deploy the application:
-```bash
-vercel
-```
-
-4. Follow the prompts to complete the deployment
-
-## Environment Variables
-
-The following environment variables need to be set in your Vercel project:
-
-- `PYTHONPATH`: Set to "." for proper module imports
-- `TESSERACT_CMD`: Path to Tesseract executable (if not in system PATH)
+7. Visit `http://127.0.0.1:5000` in your browser
 
 ## API Endpoints
 
@@ -103,14 +73,59 @@ Process a receipt image and return extracted information.
 **Response:**
 ```json
 {
-    "raw_text": "Original OCR text",
-    "refined_text": "Formatted receipt text",
-    "food_items": ["List", "of", "food", "items"],
-    "recipe_suggestions": "Generated recipe suggestions",
     "success": true,
-    "error": null
+    "processed_data": {
+        "merchant": "Store name",
+        "datetime": "Date and time",
+        "items": [
+            {"name": "item name", "price": "price", "is_food": true/false}
+        ],
+        "subtotal": "amount",
+        "tax": "amount",
+        "total": "amount",
+        "food_items": ["list of food items"],
+        "recipe_suggestions": [
+            {
+                "name": "Recipe name",
+                "additional_ingredients": ["ingredients needed"],
+                "instructions": ["step by step instructions"],
+                "cooking_time": "estimated time",
+                "difficulty": "difficulty level"
+            }
+        ]
+    }
 }
 ```
+
+## Deployment
+
+### Vercel Deployment
+
+1. Install Vercel CLI:
+```bash
+npm install -g vercel
+```
+
+2. Configure environment variables in Vercel:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `GOOGLE_APPLICATION_CREDENTIALS`: Contents of your google-credentials.json file
+
+3. Deploy using Vercel CLI:
+```bash
+vercel
+```
+
+## Environment Variables
+
+Required environment variables:
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to Google Cloud credentials JSON file
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+## Security Notes
+
+- Never commit `.env` or credential files to the repository
+- Keep your API keys secure and rotate them regularly
+- Monitor your API usage to prevent unexpected charges
 
 ## Contributing
 
@@ -122,4 +137,4 @@ Process a receipt image and return extracted information.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License. 

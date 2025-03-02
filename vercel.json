@@ -1,8 +1,5 @@
 {
     "version": 2,
-    "framework": "flask",
-    "buildCommand": "pip install -r requirements.txt",
-    "outputDirectory": ".",
     "builds": [
         {
             "src": "vercel_app.py",

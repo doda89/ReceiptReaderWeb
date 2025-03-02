@@ -4,241 +4,228 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipt Reader & Recipe Generator</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        .drag-area {
-            border: 2px dashed #4a5568;
-            min-height: 200px;
-            transition: all 0.3s ease;
-        }
-        .drag-area.active {
-            border-color: #48bb78;
-            background-color: #f0fff4;
-        }
-        .loading {
-            display: none;
-        }
-        .loading.show {
-            display: block;
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">Receipt Reader & Recipe Generator</h1>
-            <p class="text-gray-600">Upload your receipt to extract text and get recipe suggestions</p>
-        </header>
-
-        <main class="max-w-4xl mx-auto">
+<body class="bg-gray-100">
+    <div class="min-h-screen p-6">
+        <main class="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-8">
+            <h1 class="text-3xl font-bold mb-8 text-center">Receipt Reader & Recipe Generator</h1>
+            
             <!-- Upload Section -->
-            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <div id="drop-area" class="drag-area rounded-lg flex flex-col items-center justify-center p-8">
-                    <svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                    <p class="text-gray-600 text-center mb-4">Drag and drop your receipt image here<br>or click to select a file</p>
-                    <input type="file" id="file-input" class="hidden" accept=".jpg,.jpeg,.png">
-                    <button id="select-button" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                        Select File
+            <div class="mb-8">
+                <form id="uploadForm" class="space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <input type="file" id="fileInput" accept="image/*" class="hidden">
+                        <label for="fileInput" class="cursor-pointer">
+                            <div class="text-gray-600">
+                                <p>Drop your receipt image here or click to upload</p>
+                                <p class="text-sm">(Supported formats: JPG, JPEG, PNG)</p>
+                            </div>
+                        </label>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                        Process Receipt
                     </button>
-                </div>
-                <div id="file-info" class="mt-4 text-center hidden">
-                    <p class="text-gray-700">Selected file: <span id="file-name" class="font-semibold"></span></p>
-                </div>
-            </section>
+                </form>
+            </div>
 
-            <!-- Loading Indicator -->
-            <div id="loading" class="loading text-center mb-8">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                <p class="text-gray-600 mt-2">Processing your receipt...</p>
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden">
+                <div class="flex justify-center items-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span class="ml-2">Processing receipt...</span>
+                </div>
             </div>
 
             <!-- Results Section -->
-            <section id="results" class="hidden space-y-8">
-                <!-- Receipt Details -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Receipt Details</h2>
-                    <div class="space-y-4">
-                        <div id="merchant-info" class="border-b pb-4">
-                            <p class="text-gray-600">Merchant: <span id="merchant" class="font-medium text-gray-800"></span></p>
-                            <p class="text-gray-600">Date/Time: <span id="datetime" class="font-medium text-gray-800"></span></p>
-                        </div>
-                        <div id="items-list" class="border-b pb-4">
-                            <h3 class="text-lg font-medium text-gray-800 mb-2">Items</h3>
-                            <ul class="space-y-2" id="items"></ul>
-                        </div>
-                        <div id="totals" class="space-y-2">
-                            <p class="text-gray-600">Subtotal: <span id="subtotal" class="font-medium text-gray-800"></span></p>
-                            <p class="text-gray-600">Tax: <span id="tax" class="font-medium text-gray-800"></span></p>
-                            <p class="text-gray-600 text-lg font-semibold">Total: <span id="total" class="text-gray-800"></span></p>
+            <div id="results" class="hidden space-y-6">
+                <div class="border rounded-lg p-4">
+                    <h2 class="text-xl font-semibold mb-4">Receipt Details</h2>
+                    <div class="space-y-2">
+                        <p><strong>Merchant:</strong> <span id="merchantName"></span></p>
+                        <p><strong>Date/Time:</strong> <span id="dateTime"></span></p>
+                        <div id="itemsList" class="mt-2"></div>
+                        <div class="mt-4 space-y-1">
+                            <p><strong>Subtotal:</strong> <span id="subtotal"></span></p>
+                            <p><strong>Tax:</strong> <span id="tax"></span></p>
+                            <p><strong>Total:</strong> <span id="total"></span></p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Food Items -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Food Items</h2>
-                    <ul id="food-items" class="list-disc list-inside space-y-1"></ul>
+                <div id="foodItemsSection" class="border rounded-lg p-4">
+                    <h2 class="text-xl font-semibold mb-4">Food Items</h2>
+                    <ul id="foodItems" class="list-disc list-inside"></ul>
                 </div>
 
-                <!-- Recipe Suggestions -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Recipe Suggestions</h2>
-                    <div id="recipe-suggestions" class="space-y-8"></div>
+                <div id="recipeSuggestions" class="border rounded-lg p-4">
+                    <h2 class="text-xl font-semibold mb-4">Recipe Suggestions</h2>
+                    <div id="recipesList" class="space-y-4"></div>
                 </div>
-            </section>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden text-red-500 text-center mt-4"></div>
         </main>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const dropArea = document.getElementById('drop-area');
-            const fileInput = document.getElementById('file-input');
-            const selectButton = document.getElementById('select-button');
-            const fileInfo = document.getElementById('file-info');
-            const fileName = document.getElementById('file-name');
-            const loading = document.getElementById('loading');
-            const results = document.getElementById('results');
-
-            // Handle file selection button
-            selectButton.addEventListener('click', () => fileInput.click());
-
-            // Handle file input change
-            fileInput.addEventListener('change', handleFile);
-
-            // Handle drag and drop
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, preventDefaults, false);
-            });
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Please select a file');
+                return;
             }
 
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropArea.addEventListener(eventName, () => {
-                    dropArea.classList.add('active');
+            // Show loading state
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/process-receipt', {
+                    method: 'POST',
+                    body: formData
                 });
-            });
 
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, () => {
-                    dropArea.classList.remove('active');
-                });
-            });
-
-            dropArea.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                const file = dt.files[0];
-                handleFile({ target: { files: [file] } });
-            });
-
-            function handleFile(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    fileName.textContent = file.name;
-                    fileInfo.classList.remove('hidden');
-                    processReceipt(file);
-                }
-            }
-
-            async function processReceipt(file) {
-                const formData = new FormData();
-                formData.append('file', file);
-
-                try {
-                    loading.classList.add('show');
-                    results.classList.add('hidden');
-
-                    const response = await fetch('/api/process-receipt', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        displayResults(data);
-                    } else {
-                        throw new Error(data.error || 'Failed to process receipt');
-                    }
-                } catch (error) {
-                    alert(error.message);
-                } finally {
-                    loading.classList.remove('show');
-                }
-            }
-
-            function displayResults(data) {
-                const receipt = data.processed_data;
-
-                // Display merchant info
-                document.getElementById('merchant').textContent = receipt.merchant;
-                document.getElementById('datetime').textContent = receipt.datetime;
-
-                // Display items
-                const itemsList = document.getElementById('items');
-                itemsList.innerHTML = receipt.items.map(item => `
-                    <li class="flex justify-between">
-                        <span class="text-gray-800">${item.name}</span>
-                        <span class="text-gray-600">${item.price}</span>
-                    </li>
-                `).join('');
-
-                // Display totals
-                document.getElementById('subtotal').textContent = receipt.subtotal;
-                document.getElementById('tax').textContent = receipt.tax;
-                document.getElementById('total').textContent = receipt.total;
-
-                // Display food items
-                const foodItemsList = document.getElementById('food-items');
-                foodItemsList.innerHTML = receipt.food_items.map(item => `
-                    <li class="text-gray-800">${item}</li>
-                `).join('');
-
-                // Display recipe suggestions
-                const recipeSuggestions = document.getElementById('recipe-suggestions');
-                if (receipt.recipe_suggestions && receipt.recipe_suggestions.length > 0) {
-                    recipeSuggestions.innerHTML = receipt.recipe_suggestions.map(recipe => `
-                        <div class="recipe-card border-b pb-6 last:border-b-0 last:pb-0">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-2">${recipe.name}</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <h4 class="font-medium text-gray-700 mb-1">Additional Ingredients Needed:</h4>
-                                    <ul class="list-disc list-inside text-gray-600">
-                                        ${recipe.additional_ingredients.map(ingredient => `
-                                            <li>${ingredient}</li>
-                                        `).join('')}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 class="font-medium text-gray-700 mb-1">Instructions:</h4>
-                                    <ol class="list-decimal list-inside text-gray-600 space-y-1">
-                                        ${recipe.instructions.map(step => `
-                                            <li>${step}</li>
-                                        `).join('')}
-                                    </ol>
-                                </div>
-                                <div class="flex space-x-6">
-                                    <p class="text-gray-600">
-                                        <span class="font-medium text-gray-700">Cooking Time:</span> ${recipe.cooking_time}
-                                    </p>
-                                    <p class="text-gray-600">
-                                        <span class="font-medium text-gray-700">Difficulty:</span> ${recipe.difficulty}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    recipeSuggestions.innerHTML = '<p class="text-gray-600">No recipe suggestions available.</p>';
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to process receipt');
                 }
 
-                results.classList.remove('hidden');
+                displayResults(data.processed_data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loadingState').classList.add('hidden');
             }
         });
+
+        function displayResults(data) {
+            // Show results section
+            document.getElementById('results').classList.remove('hidden');
+
+            // Display receipt details
+            document.getElementById('merchantName').textContent = data.merchant || 'N/A';
+            document.getElementById('dateTime').textContent = data.datetime || 'N/A';
+            
+            // Display items
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '<h3 class="font-semibold">Items:</h3>';
+            const itemsTable = document.createElement('table');
+            itemsTable.className = 'w-full mt-2';
+            itemsTable.innerHTML = `
+                <thead>
+                    <tr>
+                        <th class="text-left">Item</th>
+                        <th class="text-right">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.items.map(item => `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td class="text-right">${item.price}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+            itemsList.appendChild(itemsTable);
+
+            // Display totals
+            document.getElementById('subtotal').textContent = data.subtotal || 'N/A';
+            document.getElementById('tax').textContent = data.tax || 'N/A';
+            document.getElementById('total').textContent = data.total || 'N/A';
+
+            // Display food items
+            const foodItemsSection = document.getElementById('foodItemsSection');
+            const foodItemsList = document.getElementById('foodItems');
+            if (data.food_items && data.food_items.length > 0) {
+                foodItemsList.innerHTML = data.food_items.map(item => `
+                    <li>${item}</li>
+                `).join('');
+                foodItemsSection.classList.remove('hidden');
+            } else {
+                foodItemsSection.classList.add('hidden');
+            }
+
+            // Display recipe suggestions
+            const recipesList = document.getElementById('recipesList');
+            if (data.recipe_suggestions && data.recipe_suggestions.length > 0) {
+                recipesList.innerHTML = data.recipe_suggestions.map(recipe => `
+                    <div class="recipe-card border rounded p-4">
+                        <h3 class="font-semibold text-lg mb-2">${recipe.name}</h3>
+                        <p><strong>Additional Ingredients:</strong></p>
+                        <ul class="list-disc list-inside mb-2">
+                            ${recipe.additional_ingredients.map(ingredient => `
+                                <li>${ingredient}</li>
+                            `).join('')}
+                        </ul>
+                        <p><strong>Instructions:</strong></p>
+                        <ol class="list-decimal list-inside mb-2">
+                            ${recipe.instructions.map(step => `
+                                <li>${step}</li>
+                            `).join('')}
+                        </ol>
+                        <p><strong>Cooking Time:</strong> ${recipe.cooking_time}</p>
+                        <p><strong>Difficulty:</strong> ${recipe.difficulty}</p>
+                    </div>
+                `).join('');
+                document.getElementById('recipeSuggestions').classList.remove('hidden');
+            } else {
+                document.getElementById('recipeSuggestions').classList.add('hidden');
+            }
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+        }
+
+        // Handle drag and drop
+        const dropZone = document.querySelector('.border-dashed');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('border-blue-500');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('border-blue-500');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            document.getElementById('fileInput').files = files;
+        }
     </script>
 </body>
 </html> 

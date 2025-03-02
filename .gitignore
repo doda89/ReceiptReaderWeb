@@ -66,3 +66,4 @@ google-credentials.json
 
 # OS
 .DS_Store 
+.vercel

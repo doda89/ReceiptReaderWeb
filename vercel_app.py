@@ -13,10 +13,20 @@ app = Flask(__name__)
 # Use /tmp for Vercel's serverless environment
 UPLOAD_FOLDER = '/tmp'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# Initialize OpenAI client
-openai_client = OpenAI()  # It will automatically use OPENAI_API_KEY from environment
+# Get API key and validate
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    print("ERROR: OPENAI_API_KEY environment variable is not set")
+    raise ValueError("OpenAI API key is required. Please set OPENAI_API_KEY environment variable.")
+
+# Initialize OpenAI client with explicit API key
+try:
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    print("OpenAI client initialized successfully")
+except Exception as e:
+    print(f"Error initializing OpenAI client: {str(e)}")
+    raise
 
 # Initialize Vision client with credentials from environment variable
 try:
@@ -28,7 +38,9 @@ try:
             f.write(google_creds)
         vision_client = vision.ImageAnnotatorClient.from_service_account_file(creds_path)
         os.remove(creds_path)  # Clean up after initialization
+        print("Vision client initialized with environment credentials")
     else:
+        print("Using local credentials file for Vision API")
         vision_client = vision.ImageAnnotatorClient.from_service_account_file('receiptreader-452521-728df5344329.json')
     print("Vision client initialized successfully")
 except Exception as e:

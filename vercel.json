@@ -34,9 +34,5 @@
     ],
     "env": {
         "PYTHONPATH": "."
-    },
-    "files": [
-        "google-credentials.json",
-        "templates/index.html"
-    ]
+    }
 } 

@@ -7,6 +7,8 @@ import base64
 from openai import OpenAI
 import io
 from PIL import Image
+import json
+from google.cloud import vision
 
 app = Flask(__name__)
 CORS(app)
@@ -19,54 +21,44 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize clients
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
+vision_client = vision.ImageAnnotatorClient()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def process_receipt_with_vision(image_path):
     """
-    Process receipt using OpenAI's Vision API
+    Process receipt using Google Cloud Vision API
     """
     try:
-        # Open and encode image
-        with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
-        
-        # Create Vision API request
-        response = client.chat.completions.create(
-            model="gpt-4-vision-preview",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "This is a receipt image. Please extract all the text and format it into a structured format. Include merchant name, date/time, items with prices, subtotal, tax, and total. Also identify any food items."
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            max_tokens=1000
-        )
+        # Read the image file
+        with open(image_path, 'rb') as image_file:
+            content = image_file.read()
+
+        # Create image object
+        image = vision.Image(content=content)
+
+        # Perform OCR
+        response = vision_client.text_detection(image=image)
+        texts = response.text_annotations
+
+        if not texts:
+            raise ValueError("No text found in image")
+
+        # Extract full text (first element contains all text)
+        extracted_text = texts[0].description
         
         # Process the extracted text
-        extracted_text = response.choices[0].message.content
         return process_receipt_text(extracted_text)
     except Exception as e:
-        print(f"Error in vision processing: {e}")
+        print(f"Error in OCR processing: {e}")
         return None
 
 def process_receipt_text(text):
     """
-    Process receipt text using OpenAI to extract structured information.
+    Process receipt text using GPT-3.5-turbo
     """
     try:
         format_prompt = f"""
@@ -83,7 +75,7 @@ def process_receipt_text(text):
         Receipt text:
         {text}
 
-        Format the response as JSON with this structure:
+        You must respond with ONLY valid JSON that matches this structure exactly, with no additional text or explanation:
         {{
             "merchant": "store name",
             "datetime": "date and time",
@@ -97,19 +89,18 @@ def process_receipt_text(text):
         }}
         """
 
-        response = client.chat.completions.create(
-            model="gpt-4",
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that processes receipt text and extracts structured information."},
+                {"role": "system", "content": "You are a helpful assistant that processes receipt text and extracts structured information. Always respond with valid JSON only."},
                 {"role": "user", "content": format_prompt}
-            ],
-            response_format={"type": "json_object"}
+            ]
         )
 
-        receipt_data = response.choices[0].message.content
+        receipt_data = json.loads(response.choices[0].message.content)
         
         # Generate recipe suggestions if food items are present
-        if "food_items" in receipt_data and receipt_data["food_items"]:
+        if receipt_data.get("food_items"):
             recipe_prompt = f"""
             Based on these ingredients: {', '.join(receipt_data['food_items'])}
             
@@ -121,7 +112,7 @@ def process_receipt_text(text):
             4. Estimated cooking time
             5. Difficulty level (Easy/Medium/Hard)
 
-            Format as JSON:
+            You must respond with ONLY valid JSON that matches this structure exactly, with no additional text or explanation:
             {{
                 "recipes": [
                     {{
@@ -135,16 +126,15 @@ def process_receipt_text(text):
             }}
             """
 
-            recipe_response = client.chat.completions.create(
-                model="gpt-4",
+            recipe_response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a helpful chef that suggests recipes based on available ingredients."},
+                    {"role": "system", "content": "You are a helpful chef that suggests recipes based on available ingredients. Always respond with valid JSON only."},
                     {"role": "user", "content": recipe_prompt}
-                ],
-                response_format={"type": "json_object"}
+                ]
             )
 
-            recipes = recipe_response.choices[0].message.content
+            recipes = json.loads(recipe_response.choices[0].message.content)
             receipt_data["recipe_suggestions"] = recipes["recipes"]
 
         return receipt_data
@@ -175,7 +165,7 @@ def process_receipt():
         filepath = app.config['UPLOAD_FOLDER'] / filename
         file.save(str(filepath))
         
-        # Process the receipt using Vision API
+        # Process the receipt using Google Cloud Vision API
         processed_data = process_receipt_with_vision(filepath)
         if not processed_data:
             raise ValueError("Failed to process receipt")

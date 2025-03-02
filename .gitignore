@@ -1,9 +1,19 @@
+# Environment variables
+.env
+.env.*
+
+# Google Cloud credentials
+*.json
+!package.json
+!package-lock.json
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -21,11 +31,10 @@ wheels/
 *.egg
 
 # Virtual Environment
-.env
-.venv
-env/
 venv/
 ENV/
+.env/
+.venv/
 
 # IDE
 .idea/
@@ -33,17 +42,27 @@ ENV/
 *.swp
 *.swo
 
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 # Project specific
 static/uploads/
 processed_images/
-*.jpg
-*.jpeg
-*.png
 *.log
+
+# Credentials
+google-credentials.json
+*-credentials.json
 
 # Vercel
 .vercel/
 .now/
 
-# New additions
+# OS
 .DS_Store 

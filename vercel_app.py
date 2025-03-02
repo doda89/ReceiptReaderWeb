@@ -10,19 +10,26 @@ import base64
 app = Flask(__name__)
 
 # Configuration
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+# Use /tmp for Vercel's serverless environment
+UPLOAD_FOLDER = '/tmp'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
-# Create uploads directory if it doesn't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Initialize OpenAI client
 openai_client = OpenAI()  # It will automatically use OPENAI_API_KEY from environment
 
-# Initialize Vision client
+# Initialize Vision client with credentials from environment variable
 try:
-    vision_client = vision.ImageAnnotatorClient.from_service_account_file('receiptreader-452521-728df5344329.json')
+    import json
+    google_creds = os.getenv('GOOGLE_CREDENTIALS')
+    if google_creds:
+        creds_path = '/tmp/google-credentials.json'
+        with open(creds_path, 'w') as f:
+            f.write(google_creds)
+        vision_client = vision.ImageAnnotatorClient.from_service_account_file(creds_path)
+        os.remove(creds_path)  # Clean up after initialization
+    else:
+        vision_client = vision.ImageAnnotatorClient.from_service_account_file('receiptreader-452521-728df5344329.json')
     print("Vision client initialized successfully")
 except Exception as e:
     print(f"Error initializing Vision client: {str(e)}")

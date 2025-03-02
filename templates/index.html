@@ -121,22 +121,29 @@
             itemsList.innerHTML = '<h3 class="font-semibold">Items:</h3>';
             const itemsTable = document.createElement('table');
             itemsTable.className = 'w-full mt-2';
-            itemsTable.innerHTML = `
-                <thead>
-                    <tr>
-                        <th class="text-left">Item</th>
-                        <th class="text-right">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.items.map(item => `
+            
+            if (data.items && Array.isArray(data.items)) {
+                itemsTable.innerHTML = `
+                    <thead>
                         <tr>
-                            <td>${item.name}</td>
-                            <td class="text-right">${item.price}</td>
+                            <th class="text-left">Item</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-center">Food Item</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            `;
+                    </thead>
+                    <tbody>
+                        ${data.items.map(item => `
+                            <tr>
+                                <td>${item.name || 'N/A'}</td>
+                                <td class="text-right">${item.price || 'N/A'}</td>
+                                <td class="text-center">${item.is_food ? '✓' : ''}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+            } else {
+                itemsTable.innerHTML = '<tr><td>No items found</td></tr>';
+            }
             itemsList.appendChild(itemsTable);
 
             // Display totals
@@ -147,7 +154,7 @@
             // Display food items
             const foodItemsSection = document.getElementById('foodItemsSection');
             const foodItemsList = document.getElementById('foodItems');
-            if (data.food_items && data.food_items.length > 0) {
+            if (data.food_items && Array.isArray(data.food_items) && data.food_items.length > 0) {
                 foodItemsList.innerHTML = data.food_items.map(item => `
                     <li>${item}</li>
                 `).join('');
@@ -157,30 +164,31 @@
             }
 
             // Display recipe suggestions
+            const recipeSuggestions = document.getElementById('recipeSuggestions');
             const recipesList = document.getElementById('recipesList');
-            if (data.recipe_suggestions && data.recipe_suggestions.length > 0) {
+            if (data.recipe_suggestions && Array.isArray(data.recipe_suggestions) && data.recipe_suggestions.length > 0) {
                 recipesList.innerHTML = data.recipe_suggestions.map(recipe => `
                     <div class="recipe-card border rounded p-4">
-                        <h3 class="font-semibold text-lg mb-2">${recipe.name}</h3>
-                        <p><strong>Additional Ingredients:</strong></p>
+                        <h3 class="font-semibold text-lg mb-2">${recipe.name || 'Untitled Recipe'}</h3>
+                        <p><strong>Ingredients:</strong></p>
                         <ul class="list-disc list-inside mb-2">
-                            ${recipe.additional_ingredients.map(ingredient => `
+                            ${(recipe.ingredients || []).map(ingredient => `
                                 <li>${ingredient}</li>
                             `).join('')}
                         </ul>
                         <p><strong>Instructions:</strong></p>
                         <ol class="list-decimal list-inside mb-2">
-                            ${recipe.instructions.map(step => `
+                            ${(recipe.instructions || []).map(step => `
                                 <li>${step}</li>
                             `).join('')}
                         </ol>
-                        <p><strong>Cooking Time:</strong> ${recipe.cooking_time}</p>
-                        <p><strong>Difficulty:</strong> ${recipe.difficulty}</p>
+                        <p><strong>Time:</strong> ${recipe.time || 'N/A'}</p>
+                        <p><strong>Difficulty:</strong> ${recipe.difficulty || 'N/A'}</p>
                     </div>
                 `).join('');
-                document.getElementById('recipeSuggestions').classList.remove('hidden');
+                recipeSuggestions.classList.remove('hidden');
             } else {
-                document.getElementById('recipeSuggestions').classList.add('hidden');
+                recipeSuggestions.classList.add('hidden');
             }
         }
 

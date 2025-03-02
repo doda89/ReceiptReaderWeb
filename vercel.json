@@ -1,9 +1,16 @@
 {
     "version": 2,
+    "framework": "flask",
+    "buildCommand": "pip install -r requirements.txt",
+    "outputDirectory": ".",
     "builds": [
         {
             "src": "vercel_app.py",
-            "use": "@vercel/python"
+            "use": "@vercel/python",
+            "config": {
+                "maxLambdaSize": "15mb",
+                "runtime": "python3.9"
+            }
         }
     ],
     "routes": [

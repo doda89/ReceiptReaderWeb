@@ -23,5 +23,11 @@
             "src": "/(.*)",
             "dest": "vercel_app.py"
         }
+    ],
+    "env": {
+        "PYTHONPATH": "."
+    },
+    "files": [
+        "google-credentials.json"
     ]
 } 

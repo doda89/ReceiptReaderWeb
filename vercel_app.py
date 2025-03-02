@@ -13,20 +13,16 @@ app = Flask(__name__)
 UPLOAD_FOLDER = '/tmp'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-GOOGLE_CREDENTIALS = os.getenv('GOOGLE_CREDENTIALS')
 
 # Initialize OpenAI client
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Initialize Vision client with credentials from environment variable
-vision_client = None
-if GOOGLE_CREDENTIALS:
-    try:
-        credentials_info = json.loads(GOOGLE_CREDENTIALS)
-        credentials = vision.Credentials.from_service_account_info(credentials_info)
-        vision_client = vision.ImageAnnotatorClient(credentials=credentials)
-    except Exception as e:
-        print(f"Error initializing Vision client: {e}")
+# Initialize Vision client
+try:
+    vision_client = vision.ImageAnnotatorClient.from_service_account_file('google-credentials.json')
+except Exception as e:
+    print(f"Error initializing Vision client: {e}")
+    vision_client = None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

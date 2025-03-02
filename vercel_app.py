@@ -3,7 +3,7 @@ from werkzeug.utils import secure_filename
 import os
 from pathlib import Path
 import json
-from openai import OpenAI
+import openai
 from google.cloud import vision
 import base64
 
@@ -22,7 +22,7 @@ if not OPENAI_API_KEY:
 
 # Initialize OpenAI client with explicit API key
 try:
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    openai.api_key = OPENAI_API_KEY
     print("OpenAI client initialized successfully")
 except Exception as e:
     print(f"Error initializing OpenAI client: {str(e)}")
@@ -82,7 +82,7 @@ def process_receipt_text(text):
 Receipt text: {text}"""
 
         print("Sending request to OpenAI")
-        response = openai_client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Format receipt text into JSON with merchant, datetime, items (name, price, is_food), subtotal, tax, total, food_items. Ensure the response is valid JSON."},
@@ -118,7 +118,7 @@ Receipt text: {text}"""
             recipe_prompt = """Generate a JSON array of 2-3 recipe suggestions using these ingredients: {}. 
 Format the response as a JSON object with a 'recipes' array containing objects with 'name', 'ingredients', 'instructions', 'time', and 'difficulty' fields.""".format(', '.join(receipt_data['food_items']))
 
-            recipe_response = openai_client.chat.completions.create(
+            recipe_response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "Generate recipe suggestions in valid JSON format with the structure: {'recipes': [{'name': string, 'ingredients': string[], 'instructions': string[], 'time': string, 'difficulty': string}]}"},

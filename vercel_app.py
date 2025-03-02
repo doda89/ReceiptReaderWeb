@@ -15,22 +15,27 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 GOOGLE_CREDENTIALS = os.getenv('GOOGLE_CREDENTIALS')
 
-# Write Google credentials to temp file
-if GOOGLE_CREDENTIALS:
-    google_creds_path = '/tmp/google-credentials.json'
-    with open(google_creds_path, 'w') as f:
-        f.write(GOOGLE_CREDENTIALS)
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_creds_path
-
-# Initialize clients
+# Initialize OpenAI client
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-vision_client = vision.ImageAnnotatorClient()
+
+# Initialize Vision client with credentials from environment variable
+vision_client = None
+if GOOGLE_CREDENTIALS:
+    try:
+        credentials_info = json.loads(GOOGLE_CREDENTIALS)
+        credentials = vision.Credentials.from_service_account_info(credentials_info)
+        vision_client = vision.ImageAnnotatorClient(credentials=credentials)
+    except Exception as e:
+        print(f"Error initializing Vision client: {e}")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def process_receipt_with_vision(image_path):
     try:
+        if not vision_client:
+            raise ValueError("Vision client not properly initialized")
+
         with open(image_path, 'rb') as image_file:
             content = image_file.read()
         

@@ -43,4 +43,7 @@ processed_images/
 
 # Vercel
 .vercel/
-.now/ 
+.now/
+
+# New additions
+.DS_Store 
